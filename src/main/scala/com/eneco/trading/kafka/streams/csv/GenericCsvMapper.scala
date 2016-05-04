@@ -1,6 +1,8 @@
 package com.eneco.energy.kafka.streams.plumber
 
 import java.io.File
+import java.nio.charset.Charset
+import java.nio.file.{Files, Paths}
 
 import com.eneco.energy.kafka.streams.plumber.Properties._
 import org.apache.avro.Schema.Parser
@@ -14,6 +16,10 @@ object StreamProcessor {
   lazy val SINK_TOPIC_CONFIG = "sink.topic"
   lazy val SCHEMA_FILE_CONFIG = "schema.file"
   lazy val SCRIPT_FILE_CONFIG = "script.file"
+
+  def readLuaScript(f: String): String = {
+    new String(Files.readAllBytes(Paths.get(f)), Charset.defaultCharset)
+  }
 
   def main(args: Array[String]): Unit = {
     // configure
@@ -29,7 +35,7 @@ object StreamProcessor {
     val in = builder.stream[String, GenericRecord](sourceTopic)
 
     // transformations
-    val out = new StreamingOperations(luaFileName, outputSchema).transform(in)
+    val out = new StreamingOperations(readLuaScript(luaFileName), outputSchema).transform(in)
 
     // sinks
     out.to(sinkTopic)

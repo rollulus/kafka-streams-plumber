@@ -10,7 +10,7 @@ import org.luaj.vm2.{LuaTable, LuaValue}
 
 import scala.collection.JavaConverters._
 
-class StreamingOperations(luaFileName:String, outputSchema:Schema) extends Logging {
+class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
   def recordToLua(r:GenericRecord): LuaTable ={
     val t = new LuaTable()
     r.getSchema.getFields.asScala.foreach(f=>{
@@ -52,19 +52,21 @@ class StreamingOperations(luaFileName:String, outputSchema:Schema) extends Loggi
     luaOntoRecord(l, r)
   }
 
-  def getLuaFunction(luaFileName:String): LuaValue = {
+  def getLuaFunction(luaCode:String): LuaValue = {
     val globals = JsePlatform.standardGlobals()
-    val chunk = globals.loadfile(luaFileName).call()
+    val chunk = globals.load(luaCode).call()
     globals.get("process")
   }
 
-  val luaFunction = getLuaFunction(luaFileName)
+  val luaFunction = getLuaFunction(luaCode)
+
+  def transformGenericRecord(inRawRecord:GenericRecord) = {
+    val inLuaRecord = recordToLua(inRawRecord)
+    val outLuaRecord = luaFunction.call(inLuaRecord).checktable
+    luaToRecord(outLuaRecord, outputSchema)
+  }
 
   def transform(in: KStream[String, GenericRecord]): KStream[String, GenericRecord] = {
-    in.mapValues(inRawRecord=>{
-      val inLuaRecord = recordToLua(inRawRecord)
-      val outLuaRecord = luaFunction.call(inLuaRecord).checktable
-      luaToRecord(outLuaRecord, outputSchema)
-    })
+    in.mapValues(transformGenericRecord)
   }
 }
