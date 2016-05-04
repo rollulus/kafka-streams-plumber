@@ -2,7 +2,7 @@ Kafka Streams Plumber
 =====================
 
 Plumber is for the dirty work you do not want to do: silly transformations of your data structures because of slight mismatches. E.g. adding/removing fields, changing enums, et cetera.
-The transformation is described in Lua, you know, the language that scripts World of Warcraft, Redis and your wireless router at home for instance. It is fast enough, believe me.
+The transformation is described in Lua, you know, the language that scripts World of Warcraft, Redis and your wireless router at home for instance.
 
 Proof of concept. Work in progress. Somewhere between a _horrible_ mistake and a _brilliant_ idea, time will tell.
 
@@ -59,8 +59,4 @@ Next, I wondered if there was something like XPath for JSON (yes there is, guess
 After that, I considered good old friend `awk`, but it appears to be a bit out of fashion and to be honest: I don't even speak it myself.
 Finally, I recalled this funny language called Lua, and decided to simply give it a try, to see how it works out.
 
-Performance
------------
 
-For what it is worth: the quick example above takes 1.503s for 1M records on a single core, that is 1.503us per record or 665k records/s. 
-This includes Avro to Lua, executing Lua, and Lua to Avro, and excludes everything else (i.e. Kafka).
