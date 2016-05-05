@@ -1,6 +1,8 @@
 Kafka Streams Plumber
 =====================
 
+[![Build Status](https://travis-ci.org/rollulus/kafka-streams-plumber.svg?branch=master)](https://travis-ci.org/rollulus/kafka-streams-plumber)
+
 Plumber is for the dirty work you do not want to do: silly transformations of your data structures because of slight mismatches. E.g. adding/removing fields, changing enums, et cetera.
 The transformation is described in Lua, you know, the language that scripts World of Warcraft, Redis and your wireless router at home for instance.
 
