@@ -239,26 +239,6 @@
           <target>${java.version}</target>
         </configuration>
       </plugin>
-
-<!--       <plugin>
-        <groupId>org.apache.avro</groupId>
-        <artifactId>avro-maven-plugin</artifactId>
-        <version>1.7.7</version>
-        <executions>
-          <execution>
-            <phase>generate-sources</phase>
-            <goals>
-              <goal>schema</goal>
-            </goals>
-            <configuration>
-                <sourceDirectory>${project.basedir}/src/main/avro/com/eneco/energy/kafka/streams/csv</sourceDirectory>
-              <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
-              <stringType>String</stringType>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
- -->
         <plugin>
             <artifactId>maven-assembly-plugin</artifactId>
             <version>2.4</version>
