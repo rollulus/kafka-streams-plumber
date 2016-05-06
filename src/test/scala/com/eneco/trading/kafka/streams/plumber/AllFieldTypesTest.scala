@@ -27,10 +27,42 @@ trait Utl {
   def float() = Schema.create(Type.FLOAT)
   def double() = Schema.create(Type.DOUBLE)
   def string() = Schema.create(Type.STRING)
+  def nul() = Schema.create(Type.NULL)
   def array(elms:Schema) = Schema.createArray(elms)
+  def union(ss:Schema*) = Schema.createUnion(ss.asJava)
 }
 
 class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl {
+  test("Union of nullable strings") {
+    val lua =
+      """function process(t)
+        |  assert(t.optstring0 == nil)
+        |  assert(t.optstring1 == "o")
+        |  assert(t.mandstring == "m")
+        |  return {mandstring="mm", optstring0="o0"} -- this makes optstring0 nil
+        |end
+      """.stripMargin
+
+    val inSchema = rec("t", Map(
+      "optstring0" -> union(nul, string),
+      "optstring1" -> union(nul, string),
+      "mandstring" -> string
+    ))
+    val r = new Record(inSchema)
+    r.put("optstring0", null)
+    r.put("optstring1", "o")
+    r.put("mandstring", "m")
+
+    val r2 = TestUtils.reserialize(r)
+    val ro = new StreamingOperations(lua,inSchema).transformGenericRecord(r2)
+    val ro2 = TestUtils.reserialize(ro)
+
+    ro2.get("optstring0").toString shouldBe "o0"
+    ro2.get("optstring1") shouldBe null
+    ro2.get("mandstring").toString shouldBe "mm"
+  }
+
+  test("A generic record should properly appear in Lua world, and vice versa") {
   def bananaSchema() = rec("banana", Map("color"->string, "weight"->float))
   def inSchema() =
     rec("t", Map(
@@ -68,7 +100,6 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
       |end
     """.stripMargin
 
-  test("A generic record should properly appear in Lua world, and vice versa") {
     val b0 = new Record(bananaSchema)
     b0.put("color","yellow")
     b0.put("weight",7.4f)

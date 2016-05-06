@@ -13,6 +13,7 @@ import org.luaj.vm2.{LuaTable, LuaValue}
 import scala.collection.JavaConverters._
 
 class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
+  // (scala/java object, schema) -> lua
   def objectToLuaValue(jv:Object, s:Schema): LuaValue = s.getType match {
     case Type.DOUBLE => LuaValue.valueOf(jv.asInstanceOf[Double])
     case Type.FLOAT => LuaValue.valueOf(jv.asInstanceOf[Float])
@@ -22,7 +23,20 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     case Type.BOOLEAN => LuaValue.valueOf(jv.asInstanceOf[Boolean])
     case Type.ARRAY => arrayToLuaValue(jv.asInstanceOf[org.apache.avro.generic.GenericArray[Object]], s.getElementType)
     case Type.RECORD => recordToLua(jv.asInstanceOf[GenericRecord])
+    case Type.UNION => unionToLua(jv, s)
     case _ => println(s.toString(true)); throw new NotImplementedError()
+  }
+
+  // TODO: full impl
+  def unionToLua(jv:Object, s:Schema): LuaValue = {
+    require(s.getType == Type.UNION)
+    require(s.getTypes.size == 2,"only [null,T] unions are allowed atm TODO")
+    require(s.getTypes.get(0).getType == Type.NULL,"only [null,T] unions are allowed atm TODO")
+    if (jv == null) {
+      LuaValue.NIL
+    } else {
+      objectToLuaValue(jv, s.getTypes.get(1))
+    }
   }
 
   def arrayToLuaValue(jvs:java.util.Collection[Object], s:Schema): LuaValue = {
@@ -46,16 +60,30 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     (1 to lt.length).map(i => luaValueToObject(lt.get(i),elms)).asJavaCollection
   }
 
-  def luaValueToObject(lv:LuaValue, s:Schema) = {
-    s.getType match {
+  // TODO: full impl
+  def luaValueToUnion(lv:LuaValue, s:Schema): Any = {
+    require(s.getType == Type.UNION)
+    require(s.getTypes.size == 2,"only [null,T] unions are allowed atm TODO")
+    require(s.getTypes.get(0).getType == Type.NULL,"only [null,T] unions are allowed atm TODO")
+    if (lv.isnil) {
+      null
+    } else {
+      luaValueToObject(lv,s.getTypes.get(1))
+    }
+  }
+
+  def luaValueToObject(lv:LuaValue, s:Schema): Any = {
+    if (lv.isnil) null
+    else s.getType match {
       case Type.DOUBLE => lv.todouble()
       case Type.FLOAT => lv.tofloat()
-      case Type.STRING => lv.tojstring()
+      case Type.STRING => require(lv.isstring); lv.tojstring()
       case Type.INT => lv.toint()
       case Type.LONG => lv.tolong()
       case Type.BOOLEAN => lv.toboolean()
       case Type.ARRAY => luaTableToArray(lv, s.getElementType)
       case Type.RECORD => luaToRecord(lv.checktable, s)
+      case Type.UNION => luaValueToUnion(lv, s)
       case _ => println(s.getType.getName); throw new NotImplementedError()
     }
   }
