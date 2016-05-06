@@ -30,9 +30,29 @@ trait Utl {
   def nul() = Schema.create(Type.NULL)
   def array(elms:Schema) = Schema.createArray(elms)
   def union(ss:Schema*) = Schema.createUnion(ss.asJava)
+  def enum(n:String, ss:Seq[String]) = Schema.createEnum(n,null,null,ss.asJava)
 }
 
 class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl {
+  test("Enums") {
+    val msgQueueEnum = enum("MessageQueue",Seq("Kafka","ZeroMQ","NATS","Other"))
+    val inSchema = rec("t", Map(
+      "queue" -> msgQueueEnum
+    ))
+    val L =
+      """function process(t)
+        |assert(t.queue == "ZeroMQ")
+        |return {queue="Kafka"}
+        |end
+      """.stripMargin
+    val r = new Record(inSchema)
+    r.put("queue", new GenericData.EnumSymbol(msgQueueEnum,"ZeroMQ"))
+    val r2 = TestUtils.reserialize(r)
+    val ro = new StreamingOperations(L,inSchema).transformGenericRecord(r2)
+    val ro2 = TestUtils.reserialize(ro)
+    ro2.get("queue").asInstanceOf[GenericData.EnumSymbol].toString shouldEqual "Kafka"
+  }
+
   test("Union of nullable strings") {
     val lua =
       """function process(t)

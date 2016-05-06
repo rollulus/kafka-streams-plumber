@@ -5,7 +5,7 @@ import java.util
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Type
 import org.apache.avro.generic.GenericData.Record
-import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.kafka.streams.kstream.KStream
 import org.luaj.vm2.lib.jse.JsePlatform
 import org.luaj.vm2.{LuaTable, LuaValue}
@@ -24,7 +24,12 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     case Type.ARRAY => arrayToLuaValue(jv.asInstanceOf[org.apache.avro.generic.GenericArray[Object]], s.getElementType)
     case Type.RECORD => recordToLua(jv.asInstanceOf[GenericRecord])
     case Type.UNION => unionToLua(jv, s)
+    case Type.ENUM => enumToLua(jv, s)
     case _ => println(s.toString(true)); throw new NotImplementedError()
+  }
+
+  def enumToLua(jv:Object, s:Schema): LuaValue = {
+    LuaValue.valueOf(jv.asInstanceOf[GenericData.EnumSymbol].toString)
   }
 
   // TODO: full impl
@@ -72,7 +77,13 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     }
   }
 
-  def luaValueToObject(lv:LuaValue, s:Schema): Any = {
+  def luaValueToEnum(lv:LuaValue, s:Schema): Any = {
+    require(s.getType == Type.ENUM)
+    require(lv.isstring)
+    new GenericData.EnumSymbol(s,lv.tojstring)
+  }
+
+    def luaValueToObject(lv:LuaValue, s:Schema): Any = {
     if (lv.isnil) null
     else s.getType match {
       case Type.DOUBLE => lv.todouble()
@@ -84,6 +95,7 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
       case Type.ARRAY => luaTableToArray(lv, s.getElementType)
       case Type.RECORD => luaToRecord(lv.checktable, s)
       case Type.UNION => luaValueToUnion(lv, s)
+      case Type.ENUM => luaValueToEnum(lv, s)
       case _ => println(s.getType.getName); throw new NotImplementedError()
     }
   }
