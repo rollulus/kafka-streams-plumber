@@ -44,12 +44,13 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
         |assert(t.queue == "ZeroMQ")
         |return {queue="Kafka"}
         |end
+        |return pb.mapValues(process)
       """.stripMargin
     val r = new Record(inSchema)
     r.put("queue", new GenericData.EnumSymbol(msgQueueEnum,"ZeroMQ"))
     val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(L,inSchema).transformGenericRecord(r2)
-    val ro2 = TestUtils.reserialize(ro)
+    val ro = new StreamingOperations(L,inSchema).transformGenericRecord((null,r2)).get
+    val ro2 = TestUtils.reserialize(ro._2)
     ro2.get("queue").asInstanceOf[GenericData.EnumSymbol].toString shouldEqual "Kafka"
   }
 
@@ -61,6 +62,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
         |  assert(t.mandstring == "m")
         |  return {mandstring="mm", optstring0="o0"} -- this makes optstring0 nil
         |end
+        |return pb.mapValues(process)
       """.stripMargin
 
     val inSchema = rec("t", Map(
@@ -74,8 +76,8 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     r.put("mandstring", "m")
 
     val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(lua,inSchema).transformGenericRecord(r2)
-    val ro2 = TestUtils.reserialize(ro)
+    val ro = new StreamingOperations(lua,inSchema).transformGenericRecord((null,r2)).get
+    val ro2 = TestUtils.reserialize(ro._2)
 
     ro2.get("optstring0").toString shouldBe "o0"
     ro2.get("optstring1") shouldBe null
@@ -118,6 +120,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
       |  bananas={ {color="brown", weight="3.2"} },
       |	}
       |end
+      |return pb.mapValues(process)
     """.stripMargin
 
     val b0 = new Record(bananaSchema)
@@ -134,8 +137,8 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     r.put("bananas",Seq(b0).asJavaCollection)
 
     val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(myLua,inSchema()).transformGenericRecord(r2)
-    val ro2 = TestUtils.reserialize(ro)
+    val ro = new StreamingOperations(myLua,inSchema).transformGenericRecord((null,r2)).get
+    val ro2 = TestUtils.reserialize(ro._2)
 
     ro2.get("boolean") shouldBe false
     ro2.get("int") shouldBe 7
@@ -147,6 +150,5 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     val bo0 = ro2.get("bananas").asInstanceOf[java.util.List[GenericRecord]].get(0)
     bo0.get("color").toString shouldBe "brown"
     bo0.get("weight") shouldBe 3.2f
-
  }
 }

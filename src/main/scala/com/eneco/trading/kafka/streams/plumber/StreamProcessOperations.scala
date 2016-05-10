@@ -8,11 +8,30 @@ import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.kafka.streams.kstream.KStream
 import org.luaj.vm2.lib.jse.JsePlatform
-import org.luaj.vm2.{LuaTable, LuaValue}
+import org.luaj.vm2.{LuaFunction, LuaTable, LuaValue}
 
 import scala.collection.JavaConverters._
+import scala.collection.immutable.{Seq, IndexedSeq}
 
 class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
+  val pbPreludeLua =
+    """local pb = {plumber="awesome"} -- magic
+      |
+      |pb.steps = {}
+      |
+      |function pb.filter(f)
+      |  table.insert(pb.steps, {f = f, fn = "filter"})
+      |  return pb
+      |end
+      |
+      |function pb.mapValues(f)
+      |  table.insert(pb.steps, {f = f, fn = "mapValues"})
+      |  return pb
+      |end
+      |
+      |return pb
+    """.stripMargin
+
   // (scala/java object, schema) -> lua
   def objectToLuaValue(jv:Object, s:Schema): LuaValue = s.getType match {
     case Type.DOUBLE => LuaValue.valueOf(jv.asInstanceOf[Double])
@@ -113,21 +132,50 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     luaOntoRecord(l, r)
   }
 
-  def getLuaFunction(luaCode:String): LuaValue = {
+  def getSteps(luaCode:String): Seq[(String, LuaFunction)] = {
     val globals = JsePlatform.standardGlobals()
-    val chunk = globals.load(luaCode).call()
-    globals.get("process")
+    val pbPrelude = globals.load(pbPreludeLua).call().checktable()
+    globals.set("pb",pbPrelude)
+    val lt = globals.load(luaCode).call().checktable()
+    require(lt.get("plumber").checkstring.tojstring == "awesome") //magic
+    val steps = lt.get("steps").checktable
+    (1 to steps.length).map(n => {val s = steps.get(n).checktable()
+      (s.get("fn").checkstring.tojstring, s.get("f").checkfunction)
+    }).toSeq
   }
 
-  val luaFunction = getLuaFunction(luaCode)
+  val steps = getSteps(luaCode)
 
-  def transformGenericRecord(inRawRecord:GenericRecord) = {
-    val inLuaRecord = recordToLua(inRawRecord)
-    val outLuaRecord = luaFunction.call(inLuaRecord).checktable
-    luaToRecord(outLuaRecord, outputSchema)
+  steps.foreach{case(n,f) => log.info(n)}
+
+  def transformGenericRecord(in:(String,GenericRecord)): Option[(String,GenericRecord)] = {
+    var c:Option[(String,LuaValue)] = Some((in._1,recordToLua(in._2)))
+    steps.foreach{case(n,f) =>
+      if (c.isDefined) {
+        val cc = c.get
+        n match {
+          case "filter" => val rrr = f.call(if (cc._1 == null) LuaValue.NIL else LuaValue.valueOf(cc._1), cc._2)
+            if (!rrr.toboolean) c=None
+          case "mapValues" => c = Some((cc._1, f.call(cc._2)))
+        }
+      }
+    }
+    if (c.isDefined)
+      Some(c.get._1, luaToRecord(c.get._2.checktable, outputSchema))
+    else
+      None
   }
 
   def transform(in: KStream[String, GenericRecord]): KStream[String, GenericRecord] = {
-    in.mapValues(transformGenericRecord)
+//    in.mapValues(transformGenericRecord).filter((k, v) => v != null)
+    val r = in.mapValues[LuaValue](recordToLua)
+    var c = r
+    steps.foreach{case(n,f) =>
+        n match {
+          case "filter" => c = c.filter((k,v) => f.call(LuaValue.valueOf(k), v).toboolean) //TODO
+          case "mapValues" => c = c.mapValues(f.call)
+        }
+    }
+    c.mapValues(v=>luaToRecord(v.checktable, outputSchema))
   }
 }

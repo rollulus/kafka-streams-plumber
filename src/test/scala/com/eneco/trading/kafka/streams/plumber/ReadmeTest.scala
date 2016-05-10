@@ -47,6 +47,7 @@ class ReadmeTest extends FunSuite with Matchers with MockFactory {
       |		fingers = undesired.fingers_lh + undesired.fingers_rh
       |	}
       |end
+      |return (require 'plumber').mapValues(process)
     """.stripMargin
 
   test("The example in the README should work") {
@@ -61,8 +62,9 @@ class ReadmeTest extends FunSuite with Matchers with MockFactory {
     rIn.put("person",rInPerson)
 
     val rInV = TestUtils.reserialize(rIn)
-    val rOut = new StreamingOperations(myLua,outSchema).transformGenericRecord(rInV)
-    val rOutV = TestUtils.reserialize(rOut)
+    val rOut = new StreamingOperations(myLua,outSchema).transformGenericRecord((null,rInV)).get
+    val rOutV = TestUtils.reserialize(rOut._2)
+
 
     rOutV.get("valid") shouldBe true
     rOutV.get("fingers") shouldBe 10L
