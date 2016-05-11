@@ -6,6 +6,7 @@ import org.apache.avro.Schema
 import org.apache.avro.Schema.Type
 import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.{GenericData, GenericRecord}
+import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.kstream.KStream
 import org.luaj.vm2.lib.jse.JsePlatform
 import org.luaj.vm2.{LuaFunction, LuaTable, LuaValue}
@@ -33,7 +34,7 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     """.stripMargin
 
   // (scala/java object, schema) -> lua
-  def objectToLuaValue(jv:Object, s:Schema): LuaValue = s.getType match {
+  def objectToLuaValue(jv: Object, s: Schema): LuaValue = s.getType match {
     case Type.DOUBLE => LuaValue.valueOf(jv.asInstanceOf[Double])
     case Type.FLOAT => LuaValue.valueOf(jv.asInstanceOf[Float])
     case Type.STRING => LuaValue.valueOf(jv.asInstanceOf[org.apache.avro.util.Utf8].toString)
@@ -47,15 +48,15 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     case _ => println(s.toString(true)); throw new NotImplementedError()
   }
 
-  def enumToLua(jv:Object, s:Schema): LuaValue = {
+  def enumToLua(jv: Object, s: Schema): LuaValue = {
     LuaValue.valueOf(jv.asInstanceOf[GenericData.EnumSymbol].toString)
   }
 
   // TODO: full impl
-  def unionToLua(jv:Object, s:Schema): LuaValue = {
+  def unionToLua(jv: Object, s: Schema): LuaValue = {
     require(s.getType == Type.UNION)
-    require(s.getTypes.size == 2,"only [null,T] unions are allowed atm TODO")
-    require(s.getTypes.get(0).getType == Type.NULL,"only [null,T] unions are allowed atm TODO")
+    require(s.getTypes.size == 2, "only [null,T] unions are allowed atm TODO")
+    require(s.getTypes.get(0).getType == Type.NULL, "only [null,T] unions are allowed atm TODO")
     if (jv == null) {
       LuaValue.NIL
     } else {
@@ -63,15 +64,15 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     }
   }
 
-  def arrayToLuaValue(jvs:java.util.Collection[Object], s:Schema): LuaValue = {
+  def arrayToLuaValue(jvs: java.util.Collection[Object], s: Schema): LuaValue = {
     val t = LuaValue.tableOf
-    jvs.asScala.map(objectToLuaValue(_,s)).zipWithIndex.foreach{case (v,i) => t.set(i+1,v)}
+    jvs.asScala.map(objectToLuaValue(_, s)).zipWithIndex.foreach { case (v, i) => t.set(i + 1, v) }
     t
   }
 
-  def recordToLua(r:GenericRecord): LuaTable ={
+  def recordToLua(r: GenericRecord): LuaTable = {
     val t = new LuaTable()
-    r.getSchema.getFields.asScala.foreach(f=>{
+    r.getSchema.getFields.asScala.foreach(f => {
       val lv = objectToLuaValue(r.get(f.name), f.schema())
       t.set(f.name, lv)
     })
@@ -79,30 +80,30 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
   }
 
   // java util collection
-  def luaTableToArray(lv:LuaValue, elms:Schema): util.Collection[Any] = {
+  def luaTableToArray(lv: LuaValue, elms: Schema): util.Collection[Any] = {
     val lt = lv.checktable()
-    (1 to lt.length).map(i => luaValueToObject(lt.get(i),elms)).asJavaCollection
+    (1 to lt.length).map(i => luaValueToObject(lt.get(i), elms)).asJavaCollection
   }
 
   // TODO: full impl
-  def luaValueToUnion(lv:LuaValue, s:Schema): Any = {
+  def luaValueToUnion(lv: LuaValue, s: Schema): Any = {
     require(s.getType == Type.UNION)
-    require(s.getTypes.size == 2,"only [null,T] unions are allowed atm TODO")
-    require(s.getTypes.get(0).getType == Type.NULL,"only [null,T] unions are allowed atm TODO")
+    require(s.getTypes.size == 2, "only [null,T] unions are allowed atm TODO")
+    require(s.getTypes.get(0).getType == Type.NULL, "only [null,T] unions are allowed atm TODO")
     if (lv.isnil) {
       null
     } else {
-      luaValueToObject(lv,s.getTypes.get(1))
+      luaValueToObject(lv, s.getTypes.get(1))
     }
   }
 
-  def luaValueToEnum(lv:LuaValue, s:Schema): Any = {
+  def luaValueToEnum(lv: LuaValue, s: Schema): Any = {
     require(s.getType == Type.ENUM)
     require(lv.isstring)
-    new GenericData.EnumSymbol(s,lv.tojstring)
+    new GenericData.EnumSymbol(s, lv.tojstring)
   }
 
-    def luaValueToObject(lv:LuaValue, s:Schema): Any = {
+  def luaValueToObject(lv: LuaValue, s: Schema): Any = {
     if (lv.isnil) null
     else s.getType match {
       case Type.DOUBLE => lv.todouble()
@@ -119,63 +120,64 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
     }
   }
 
-  def luaOntoRecord(l:LuaTable, r:GenericRecord): GenericRecord ={
-    r.getSchema.getFields.asScala.foreach(f=>{
+  def luaOntoRecord(l: LuaTable, r: GenericRecord): GenericRecord = {
+    r.getSchema.getFields.asScala.foreach(f => {
       val lv = l.get(f.name)
       r.put(f.name, luaValueToObject(lv, f.schema))
     })
     r
   }
 
-  def luaToRecord(l:LuaTable, s:Schema): GenericRecord ={
+  def luaToRecord(l: LuaTable, s: Schema): GenericRecord = {
     val r = new Record(s)
     luaOntoRecord(l, r)
   }
 
-  def getSteps(luaCode:String): Seq[(String, LuaFunction)] = {
+  def getSteps(luaCode: String): Seq[(String, LuaFunction)] = {
     val globals = JsePlatform.standardGlobals()
     val pbPrelude = globals.load(pbPreludeLua).call().checktable()
-    globals.set("pb",pbPrelude)
+    globals.set("pb", pbPrelude)
     val lt = globals.load(luaCode).call().checktable()
     require(lt.get("plumber").checkstring.tojstring == "awesome") //magic
     val steps = lt.get("steps").checktable
-    (1 to steps.length).map(n => {val s = steps.get(n).checktable()
+    (1 to steps.length).map(n => {
+      val s = steps.get(n).checktable()
       (s.get("fn").checkstring.tojstring, s.get("f").checkfunction)
     }).toSeq
   }
 
-  val steps = getSteps(luaCode)
+  val operations = getSteps(luaCode)
+    .map { case (n, f) => n match {
+      case "filter" => (k: LuaValue, v: LuaValue) => if (f.call(k, v).toboolean) Some(k, v) else None
+      case "mapValues" => (k: LuaValue, v: LuaValue) => Some((k, f.call(v)))
+    }}
+    .map(f => (v: Option[(LuaValue, LuaValue)]) => v match {
+      case Some((k, v)) => f(k, v)
+      case _ => None
+    })
 
-  steps.foreach{case(n,f) => log.info(n)}
+  def transformLuaKeyvalue(keyValue0:Option[(LuaValue, LuaValue)]) = operations
+      .foldLeft(keyValue0)((keyValue, operation) => operation(keyValue))
 
-  def transformGenericRecord(in:(String,GenericRecord)): Option[(String,GenericRecord)] = {
-    var c:Option[(String,LuaValue)] = Some((in._1,recordToLua(in._2)))
-    steps.foreach{case(n,f) =>
-      if (c.isDefined) {
-        val cc = c.get
-        n match {
-          case "filter" => val rrr = f.call(if (cc._1 == null) LuaValue.NIL else LuaValue.valueOf(cc._1), cc._2)
-            if (!rrr.toboolean) c=None
-          case "mapValues" => c = Some((cc._1, f.call(cc._2)))
-        }
-      }
-    }
-    if (c.isDefined)
-      Some(c.get._1, luaToRecord(c.get._2.checktable, outputSchema))
-    else
-      None
+  def transformGenericRecord(in: (String, GenericRecord)): Option[(String, GenericRecord)] = {
+    val ini: Option[(LuaValue, LuaValue)] = Some((if (in._1 == null) LuaValue.NIL else LuaValue.valueOf(in._1), recordToLua(in._2)))
+    transformLuaKeyvalue(ini)
+      .map { case (k, v) => (k.tojstring, luaToRecord(v.checktable, outputSchema)) }
   }
 
   def transform(in: KStream[String, GenericRecord]): KStream[String, GenericRecord] = {
-//    in.mapValues(transformGenericRecord).filter((k, v) => v != null)
-    val r = in.mapValues[LuaValue](recordToLua)
-    var c = r
-    steps.foreach{case(n,f) =>
-        n match {
-          case "filter" => c = c.filter((k,v) => f.call(LuaValue.valueOf(k), v).toboolean) //TODO
-          case "mapValues" => c = c.mapValues(f.call)
-        }
-    }
-    c.mapValues(v=>luaToRecord(v.checktable, outputSchema))
+    in
+      .map[LuaValue, LuaValue]((k, v) => new KeyValue(if (k == null) LuaValue.NIL else LuaValue.valueOf(k), recordToLua(v)))
+      .map[String, Option[(LuaValue, LuaValue)]]((k, v) => {
+      transformLuaKeyvalue(Some(k, v)) match {
+        case Some(kv) => new KeyValue(null, Some(kv))
+        case _ => new KeyValue(null, None)
+      }
+    }).filter((_, kv) => kv match {
+      case Some(kv) => true
+      case _ => false
+    }).map((_, kv) => kv match {
+      case Some((k, v)) => new KeyValue(k.tojstring, luaToRecord(v.checktable, outputSchema))
+    })
   }
 }
