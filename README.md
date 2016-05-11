@@ -39,13 +39,13 @@ But you'd rather have had this:
 Then give `Plumber` the schema of the desired structure along with:
 
 ```lua
-function process(s)
+return pb.mapValues(function(v)
     return {
         valid = not s.notValid,
         name = s.person.name:lower(),
         fingers = s.fingers_lh + s.fingers_rh
     }
-end
+end)
 ```
 
 And plumb!
