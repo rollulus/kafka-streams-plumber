@@ -47,7 +47,7 @@ class ReadmeTest extends FunSuite with Matchers with MockFactory {
       |		fingers = undesired.fingers_lh + undesired.fingers_rh
       |	}
       |end
-      |return (require 'plumber').mapValues(process)
+      |return pb.mapValues(process)
     """.stripMargin
 
   test("The example in the README should work") {
