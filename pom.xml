@@ -29,11 +29,11 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <dependencies>
-     <dependency>
+    <dependency>
       <groupId>org.luaj</groupId>
       <artifactId>luaj-jse</artifactId>
       <version>3.0.1</version>
-   </dependency>
+    </dependency>
     <dependency>
       <groupId>io.confluent</groupId>
       <artifactId>kafka-avro-serializer</artifactId>
@@ -100,7 +100,6 @@
       <artifactId>zkclient</artifactId>
       <version>0.7</version>
     </dependency>
-
     <!-- Test dependencies -->
     <dependency>
       <groupId>junit</groupId>
@@ -141,7 +140,6 @@
     </dependency>
   </dependencies>
   <build>
-
     <pluginManagement>
       <plugins>
         <plugin>
@@ -151,9 +149,7 @@
         </plugin>
       </plugins>
     </pluginManagement>
-
     <plugins>
-
       <!--
           Add Scala sources and tests to project.
           See http://www.mojohaus.org/build-helper-maven-plugin/usage.html
@@ -189,7 +185,6 @@
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <groupId>org.scalatest</groupId>
         <artifactId>scalatest-maven-plugin</artifactId>
@@ -203,7 +198,6 @@
           </execution>
         </executions>
       </plugin>
-
       <!-- See http://davidb.github.io/scala-maven-plugin/usage.html -->
       <plugin>
         <groupId>net.alchim31.maven</groupId>
@@ -228,7 +222,6 @@
           </execution>
         </executions>
       </plugin>
-
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -239,26 +232,30 @@
           <target>${java.version}</target>
         </configuration>
       </plugin>
-        <plugin>
-            <artifactId>maven-assembly-plugin</artifactId>
-            <version>2.4</version>
-            <configuration>
-                <descriptorRefs>
-                    <descriptorRef>jar-with-dependencies</descriptorRef>
-                </descriptorRefs>
-            </configuration>
-            <executions>
-                <execution>
-                    <id>make-assembly</id>
-                    <phase>package</phase>
-                    <goals>
-                        <goal>single</goal>
-                    </goals>
-                </execution>
-            </executions>
-        </plugin>
-
-<!--      <plugin>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <version>2.4</version>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>com.eneco.energy.kafka.streams.plumber.StreamProcessor</mainClass>
+            </manifest>
+          </archive>
+          <descriptorRefs>
+            <descriptorRef>jar-with-dependencies</descriptorRef>
+          </descriptorRefs>
+        </configuration>
+        <executions>
+          <execution>
+            <id>make-assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!--      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-assembly-plugin</artifactId>
         <version>2.5.2</version>
@@ -283,7 +280,6 @@
           </execution>
         </executions>
       </plugin> -->
-
       <plugin>
         <!--
            See https://wiki.jasig.org/display/LIC/maven-notice-plugin
@@ -298,9 +294,6 @@
           </licenseMapping>
         </configuration>
       </plugin>
-
     </plugins>
-
   </build>
-
 </project>
