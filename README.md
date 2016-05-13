@@ -39,7 +39,7 @@ But you'd rather have had this:
 Then give `Plumber` the schema of the desired structure along with:
 
 ```lua
-return pb.mapValues(function(v)
+return pb.mapValues(function(s)
     return {
         valid = not s.notValid,
         name = s.person.name:lower(),
