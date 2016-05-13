@@ -53,6 +53,29 @@ And plumb:
 
 Optionally, you can give Plumber a bunch of inputs and a bunch of expected outputs. Prior to start the streaming job, it checks that given these inputs the provided logic yields these outputs. If not, it will refuse to start. An example test is found [here](examples/demo.test.lua).
 
+Usage
+-----
+
+    plumber 0.0.1
+    Usage: plumber [options]
+
+      --help
+            prints this usage text.
+      -i <value> | --source <value>
+            source topic.
+      -o <value> | --sink <value>
+            sink topic.
+      -s <value> | --schema <value>
+            sink Avro schema file, e.g. demo.avsc.
+      -l <value> | --script <value>
+            lua script to provide operations, e.g. demo.lua.
+      -p <value> | --properties <value>
+            properties file, e.g. demo.properties.
+      -t <value> | --test <value>
+            lua script file for test/verification pre-pass, e.g. demo.test.lua.
+      -D | --dry-run
+            dry-run, do no start streaming. Only makes sense in combination with -t.
+
 Rationale
 ---------
 

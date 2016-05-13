@@ -59,39 +59,39 @@ object Plumber extends Logging {
   def parseProgramArgs(args: Array[String]) = {
     new OptionParser[Arguments]("plumber") {
       head("plumber", "0.0.1")
-      help("help") text ("prints this usage text")
+      help("help") text ("prints this usage text.")
 
       opt[String]('i', "source") optional() action { (x, args) =>
         args.copy(sourceTopic = x)
-      } text (s"xxx")
+      } text (s"source topic.")
 
       opt[String]('o', "sink") optional() action { (x, args) =>
         args.copy(sinkTopic = x)
-      } text (s"xxx")
+      } text (s"sink topic.")
 
       opt[String]('s', "schema") required() action { (x, args) =>
         args.copy(sinkSchema = x)
-      } text (s"xxx")
+      } text (s"sink Avro schema file, e.g. demo.avsc.")
 
       opt[String]('l', "script") required() action { (x, args) =>
         args.copy(scriptFile = x)
-      } text (s"xxx")
+      } text (s"lua script to provide operations, e.g. demo.lua.")
 
       opt[String]('p', "properties") optional() action { (x, args) =>
         args.copy(propertiesFile = x)
-      } text (s"xxx")
+      } text (s"properties file, e.g. demo.properties.")
 
       opt[String]('t', "test") optional() action { (x, args) =>
         args.copy(testFile = Some(x))
-      } text (s"xxx")
+      } text (s"lua script file for test/verification pre-pass, e.g. demo.test.lua.")
 
       opt[Unit]('D', "dry-run") optional() action { (x, args) =>
         args.copy(dryRun = true)
-      } text (s"xxx")
+      } text (s"dry-run, do no start streaming. Only makes sense in combination with -t.")
 
       checkConfig { c =>
         if ((c.sourceTopic == null || c.sinkTopic == null || c.propertiesFile == null) && !c.dryRun)
-          failure("source and sink topics and properties must be provided for a none dry run")
+          failure("source and sink topics and properties must be provided for a none-dry run")
         else
           success
       }
