@@ -9,8 +9,7 @@ import org.luaj.vm2.{LuaFunction, LuaValue}
 
 import scala.collection.immutable.Seq
 
-// Out-source the streaming operations to Lua
-class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
+class LuaOperations(luaCode:String) extends Logging {
   val pbPreludeLua =
     """local pb = {plumber="awesome"} -- magic
       |
@@ -29,32 +28,40 @@ class StreamingOperations(luaCode:String, outputSchema:Schema) extends Logging {
       |return pb
     """.stripMargin
 
-  // extract the sequence of functional-style operations (e.g. filter, map) and the LuaFunction that is to be used
-  def getOperations(luaCode: String): Seq[(String, LuaFunction)] = {
+  val plumberConfig = {
     val globals = JsePlatform.standardGlobals()
     val pbPrelude = globals.load(pbPreludeLua).call().checktable()
     globals.set("pb", pbPrelude)
     val lt = globals.load(luaCode).call().checktable()
     require(lt.get("plumber").checkstring.tojstring == "awesome") //magic
-    val steps = lt.get("steps").checktable
+    lt
+  }
+
+  // extract the sequence of functional-style operations (e.g. filter, map) and the LuaFunction that is to be used
+  def getOperations(): Seq[(String, LuaFunction)] = {
+    val steps = plumberConfig.get("steps").checktable
     (1 to steps.length).map(n => {
       val s = steps.get(n).checktable()
       (s.get("fn").checkstring.tojstring, s.get("f").checkfunction)
     }).toSeq
   }
+}
 
-  val operations: Seq[(Option[(LuaValue, LuaValue)]) => Option[(LuaValue, LuaValue)]] = getOperations(luaCode)
+// Out-source the streaming operations to Lua
+class StreamingOperations(luaOps:LuaOperations, outputSchema:Schema) extends Logging {
+  val operations: Seq[(Option[(LuaValue, LuaValue)]) => Option[(LuaValue, LuaValue)]] = luaOps.getOperations
     .map { case (n, f) => n match {
       case "filter" => (k: LuaValue, v: LuaValue) => if (f.call(k, v).toboolean) Some(k, v) else None
       case "mapValues" => (k: LuaValue, v: LuaValue) => Some((k, f.call(v)))
-    }}
+    }
+    }
     .map(f => (v: Option[(LuaValue, LuaValue)]) => v match {
       case Some((k, v)) => f(k, v)
       case _ => None
     })
 
-  def transformLuaKeyvalue(keyValue0:Option[(LuaValue, LuaValue)]) = operations
-      .foldLeft(keyValue0)((keyValue, operation) => operation(keyValue))
+  def transformLuaKeyvalue(keyValue0: Option[(LuaValue, LuaValue)]) = operations
+    .foldLeft(keyValue0)((keyValue, operation) => operation(keyValue))
 
   def transformGenericRecord(in: (String, GenericRecord)): Option[(String, GenericRecord)] = {
     val ini: Option[(LuaValue, LuaValue)] = Some((if (in._1 == null) LuaValue.NIL else LuaValue.valueOf(in._1), LuaMapper.recordToLua(in._2)))

@@ -27,14 +27,14 @@ class ChainingOperationsTest extends FunSuite with Matchers with MockFactory wit
     val r = new Record(inSchema)
 
     r.put("i", 8)
-    val ro = new StreamingOperations(lua,outSchema).transformGenericRecord((null,r)).get._2
+    val ro = new StreamingOperations(new LuaOperations(lua),outSchema).transformGenericRecord((null,r)).get._2
     ro.get("j") shouldEqual 16
 
     r.put("i", 7)
-    new StreamingOperations(lua,outSchema).transformGenericRecord((null,r)).isDefined shouldBe false
+    new StreamingOperations(new LuaOperations(lua),outSchema).transformGenericRecord((null,r)).isDefined shouldBe false
 
     r.put("i", 17)
-    new StreamingOperations(lua,outSchema).transformGenericRecord((null,r)).isDefined shouldBe false
+    new StreamingOperations(new LuaOperations(lua),outSchema).transformGenericRecord((null,r)).isDefined shouldBe false
 
   }
 }

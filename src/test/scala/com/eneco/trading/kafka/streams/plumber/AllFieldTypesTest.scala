@@ -49,7 +49,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     val r = new Record(inSchema)
     r.put("queue", new GenericData.EnumSymbol(msgQueueEnum,"ZeroMQ"))
     val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(L,inSchema).transformGenericRecord((null,r2)).get
+    val ro = new StreamingOperations(new LuaOperations(L),inSchema).transformGenericRecord((null,r2)).get
     val ro2 = TestUtils.reserialize(ro._2)
     ro2.get("queue").asInstanceOf[GenericData.EnumSymbol].toString shouldEqual "Kafka"
   }
@@ -76,7 +76,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     r.put("mandstring", "m")
 
     val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(lua,inSchema).transformGenericRecord((null,r2)).get
+    val ro = new StreamingOperations(new LuaOperations(lua),inSchema).transformGenericRecord((null,r2)).get
     val ro2 = TestUtils.reserialize(ro._2)
 
     ro2.get("optstring0").toString shouldBe "o0"
@@ -137,7 +137,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     r.put("bananas",Seq(b0).asJavaCollection)
 
     val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(myLua,inSchema).transformGenericRecord((null,r2)).get
+    val ro = new StreamingOperations(new LuaOperations(myLua),inSchema).transformGenericRecord((null,r2)).get
     val ro2 = TestUtils.reserialize(ro._2)
 
     ro2.get("boolean") shouldBe false

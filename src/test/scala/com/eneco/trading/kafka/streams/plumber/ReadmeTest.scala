@@ -62,7 +62,7 @@ class ReadmeTest extends FunSuite with Matchers with MockFactory {
     rIn.put("person",rInPerson)
 
     val rInV = TestUtils.reserialize(rIn)
-    val rOut = new StreamingOperations(myLua,outSchema).transformGenericRecord((null,rInV)).get
+    val rOut = new StreamingOperations(new LuaOperations(myLua),outSchema).transformGenericRecord((null,rInV)).get
     val rOutV = TestUtils.reserialize(rOut._2)
 
 
