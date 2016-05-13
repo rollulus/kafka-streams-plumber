@@ -51,6 +51,8 @@ And plumb:
 
     plumber.sh -s demo.avsc -l demo.lua -p demo.properties -i plumber-undesired -o plumber-desired
 
+Optionally, you can give Plumber a bunch of inputs and a bunch of expected outputs. Prior to start the streaming job, it checks that given these inputs the provided logic yields these outputs. If not, it will refuse to start. An example test is found [here](examples/demo.test.lua).
+
 Rationale
 ---------
 
