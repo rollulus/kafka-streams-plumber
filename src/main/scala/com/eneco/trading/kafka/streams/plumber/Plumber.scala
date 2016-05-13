@@ -1,6 +1,6 @@
 package com.eneco.energy.kafka.streams.plumber
 
-import  java.io.File
+import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.{Files, Paths}
 
@@ -10,12 +10,11 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams._
 import org.apache.kafka.streams.kstream.KStreamBuilder
-
 import scopt._
 
-import scala.util.{Try, Success}
+import scala.util.{Success, Try}
 
-object Plumber {
+object Plumber extends Logging {
   case class Arguments(sourceTopic: String = null,
                        sinkTopic: String= null,
                        sinkSchema: String = null,
@@ -25,16 +24,29 @@ object Plumber {
                        dryRun: Boolean = false)
 
   def exec(a:Arguments): Try[Unit] = {
-    // configure
+    val outputSchema = new Parser().parse(new File((a.sinkSchema)))
+    val luaOps = new LuaOperations(readLuaScript(a.scriptFile),a.testFile.map(readLuaScript))
+    val streamingOps = new StreamingOperations(luaOps, outputSchema)
+
+    if (a.testFile.isDefined) {
+      val v = streamingOps.verifyExpectationsForInput(luaOps.testingInputs, luaOps.testingExpectations)
+      if (v.isFailure) {
+        log.error(v.get.toString)
+        return v
+      }
+    }
+    if (a.dryRun) {
+      return Success()
+    }
+
     val builder = new KStreamBuilder
     val cfg = propertiesFromFiles(a.propertiesFile) | fixedProperties
-    val outputSchema = new Parser().parse(new File((a.sinkSchema)))
 
     // source
     val in = builder.stream[String, GenericRecord](a.sourceTopic)
 
     // transformations
-    val out = new StreamingOperations(new LuaOperations(readLuaScript(a.scriptFile)), outputSchema).transform(in)
+    val out = streamingOps.transform(in)
 
     // sinks
     out.to(a.sinkTopic)

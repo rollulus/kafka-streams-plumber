@@ -1,8 +1,6 @@
 package com.eneco.energy.kafka.streams.plumber
 
-import org.apache.avro.Schema.Parser
 import org.apache.avro.generic.GenericData.Record
-import org.apache.avro.util.Utf8
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FunSuite, Matchers}
 

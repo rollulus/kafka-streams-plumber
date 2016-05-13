@@ -6,7 +6,7 @@ import org.apache.avro.util.Utf8
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FunSuite, Matchers}
 
-class ReadmeTest extends FunSuite with Matchers with MockFactory {
+  class ReadmeTest extends FunSuite with Matchers with MockFactory {
   val inSchema = new Parser().parse(
     """{
       |"type":"record",
