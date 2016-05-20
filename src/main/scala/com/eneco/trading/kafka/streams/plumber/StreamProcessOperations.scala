@@ -18,6 +18,7 @@ class LuaOperations(luaCode:String, luaTestCode:Option[String] = None) extends L
   val PLUMBER_MAGIC_VALUE = "awesome"
   val STEPS_KEY = "steps"
   val FILTER_OPERATION = "filter"
+  val MAP_OPERATION = "map"
   val MAP_VALUES_OPERATION = "mapValues"
   val TEST_INPUTS_KEY = "test_inputs"
   val TEST_EXPECTATIONS_KEY = "test_expectations"
@@ -54,6 +55,11 @@ class LuaOperations(luaCode:String, luaTestCode:Option[String] = None) extends L
       |
       |function pb.${FILTER_OPERATION}(f)
       |  table.insert(pb.steps, {${LUA_FUNCTION_KEY} = f, ${OPERATION_KEY} = "${FILTER_OPERATION}"})
+      |  return pb
+      |end
+      |
+      |function pb.${MAP_OPERATION}(f)
+      |  table.insert(pb.steps, {${LUA_FUNCTION_KEY} = f, ${OPERATION_KEY} = "${MAP_OPERATION}"})
       |  return pb
       |end
       |
@@ -129,6 +135,11 @@ class StreamingOperations(luaOps:LuaOperations, outputSchema:Schema) extends Log
     .map { case (n, f) => n match {
       case "filter" => (k: LuaValue, v: LuaValue) => if (f.call(k, v).toboolean) Some(k, v) else None
       case "mapValues" => (k: LuaValue, v: LuaValue) => Some((k, f.call(v)))
+      case "map" => (k: LuaValue, v: LuaValue) => {
+        val retVals = f.invoke(k, v)
+        require(retVals.narg == 2, "map is supposed to return 2 values")
+        Some(retVals.arg(1), retVals.arg(2))
+      }
     }
     }
     .map(f => (v: Option[(LuaValue, LuaValue)]) => v match {
