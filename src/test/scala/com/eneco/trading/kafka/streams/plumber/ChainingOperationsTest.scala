@@ -1,6 +1,7 @@
 package com.eneco.energy.kafka.streams.plumber
 
 import org.apache.avro.generic.GenericData.Record
+import org.apache.avro.generic.GenericRecord
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FunSuite, Matchers}
 
@@ -25,14 +26,15 @@ class ChainingOperationsTest extends FunSuite with Matchers with MockFactory wit
     val r = new Record(inSchema)
 
     r.put("i", 8)
-    val ro = new StreamingOperations(new LuaOperations(lua),outSchema).transformGenericRecord((null,r)).get._2
+    val ro = process[String, GenericRecord](lua, (null, r), KeyValueType(StringType, AvroType(Some(outSchema)))).get._2
+
     ro.get("j") shouldEqual 16
 
     r.put("i", 7)
-    new StreamingOperations(new LuaOperations(lua),outSchema).transformGenericRecord((null,r)).isDefined shouldBe false
+    process[String, GenericRecord](lua, (null, r), KeyValueType(StringType, AvroType(Some(outSchema)))).isDefined shouldBe false
 
     r.put("i", 17)
-    new StreamingOperations(new LuaOperations(lua),outSchema).transformGenericRecord((null,r)).isDefined shouldBe false
+    process[String, GenericRecord](lua, (null, r), KeyValueType(StringType, AvroType(Some(outSchema)))).isDefined shouldBe false
 
   }
 }

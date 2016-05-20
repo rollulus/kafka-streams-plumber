@@ -14,8 +14,8 @@ class GenericAvroSerializer[T]() extends Serializer[T] with Configurable {
     configure(map)
   }
 
-  def configure(map: util.Map[String, _], b: Boolean): Unit = {
-    inner.configure(map, b)
+  def configure(map: util.Map[String, _], isKey: Boolean): Unit = {
+    inner.configure(map, isKey)
   }
 
   def serialize(t: String, v: T): Array[Byte] = {

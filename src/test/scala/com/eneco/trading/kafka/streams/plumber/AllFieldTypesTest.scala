@@ -1,7 +1,5 @@
 package com.eneco.energy.kafka.streams.plumber
 
-import org.apache.avro.Schema
-import org.apache.avro.Schema.Type
 import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.avro.util.Utf8
@@ -9,29 +7,6 @@ import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConverters._
-
-//Avro API && me = :(
-trait Utl {
-  def rec(n: String, fs: Map[String, Schema] = null): Schema = {
-    val r = Schema.createRecord(n, null, null, false)
-    if (fs != null) {
-      r.setFields(fs.map { case (n, s) => field(n, s) }.toList.asJava)
-    }
-    r
-  }
-
-  def field(n: String, s: Schema) = new Schema.Field(n, s, null, null)
-  def boolean() = Schema.create(Type.BOOLEAN)
-  def int() = Schema.create(Type.INT)
-  def long() = Schema.create(Type.LONG)
-  def float() = Schema.create(Type.FLOAT)
-  def double() = Schema.create(Type.DOUBLE)
-  def string() = Schema.create(Type.STRING)
-  def nul() = Schema.create(Type.NULL)
-  def array(elms:Schema) = Schema.createArray(elms)
-  def union(ss:Schema*) = Schema.createUnion(ss.asJava)
-  def enum(n:String, ss:Seq[String]) = Schema.createEnum(n,null,null,ss.asJava)
-}
 
 class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl {
   test("Enums") {
@@ -48,9 +23,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
       """.stripMargin
     val r = new Record(inSchema)
     r.put("queue", new GenericData.EnumSymbol(msgQueueEnum,"ZeroMQ"))
-    val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(new LuaOperations(L),inSchema).transformGenericRecord((null,r2)).get
-    val ro2 = TestUtils.reserialize(ro._2)
+    val ro2 = process[String, GenericRecord](L, (null, r), KeyValueType(StringType, AvroType(Some(inSchema)))).get._2
     ro2.get("queue").asInstanceOf[GenericData.EnumSymbol].toString shouldEqual "Kafka"
   }
 
@@ -75,9 +48,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     r.put("optstring1", "o")
     r.put("mandstring", "m")
 
-    val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(new LuaOperations(lua),inSchema).transformGenericRecord((null,r2)).get
-    val ro2 = TestUtils.reserialize(ro._2)
+    val ro2 = process[String, GenericRecord](lua, (null, r), KeyValueType(StringType, AvroType(Some(inSchema)))).get._2
 
     ro2.get("optstring0").toString shouldBe "o0"
     ro2.get("optstring1") shouldBe null
@@ -136,9 +107,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     r.put("strings",Seq("aap","noot","mies").asJavaCollection)
     r.put("bananas",Seq(b0).asJavaCollection)
 
-    val r2 = TestUtils.reserialize(r)
-    val ro = new StreamingOperations(new LuaOperations(myLua),inSchema).transformGenericRecord((null,r2)).get
-    val ro2 = TestUtils.reserialize(ro._2)
+    val ro2 = process[String, GenericRecord](myLua, (null, r), KeyValueType(StringType, AvroType(Some(inSchema)))).get._2
 
     ro2.get("boolean") shouldBe false
     ro2.get("int") shouldBe 7

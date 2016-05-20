@@ -1,15 +1,13 @@
 package com.eneco.energy.kafka.streams.plumber
 
-import org.apache.avro.Schema
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.kstream.KStream
 import org.luaj.vm2.lib.jse.JsePlatform
 import org.luaj.vm2.{LuaFunction, LuaValue}
-import org.scalamock.scalatest.proxy.MockFactory
 
 import scala.collection.immutable.Seq
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 class LuaOperations(luaCode:String, luaTestCode:Option[String] = None) extends Logging {
   val LUA_FUNCTION_KEY = "f"
@@ -130,7 +128,9 @@ object LuaUtil {
 }
 
 // Out-source the streaming operations to Lua
-class StreamingOperations(luaOps:LuaOperations, outputSchema:Schema) extends Logging {
+class StreamingOperations(luaOps:LuaOperations, keyValueType: KeyValueType) extends Logging {
+  log.info("we output key-values of type " + keyValueType)
+
   val operations: Seq[(Option[(LuaValue, LuaValue)]) => Option[(LuaValue, LuaValue)]] = luaOps.operations
     .map { case (n, f) => n match {
       case "filter" => (k: LuaValue, v: LuaValue) => if (f.call(k, v).toboolean) Some(k, v) else None
@@ -147,7 +147,7 @@ class StreamingOperations(luaOps:LuaOperations, outputSchema:Schema) extends Log
       case _ => None
     })
 
-  def verifyExpectationsForInput(in:Seq[(LuaValue, LuaValue)], exp:Seq[(LuaValue, LuaValue)]) : Try[Unit] = {
+  def verifyExpectationsForInput(in: Seq[(LuaValue, LuaValue)], exp: Seq[(LuaValue, LuaValue)]): Try[Unit] = {
     val res = in.flatMap(kv => transformLuaKeyValue(Some(kv)))
     if (res.length != exp.length) {
       Failure(new Exception(s"got ${res.length} outputs but expected ${exp.length}"))
@@ -163,15 +163,41 @@ class StreamingOperations(luaOps:LuaOperations, outputSchema:Schema) extends Log
   def transformLuaKeyValue(keyValue0: Option[(LuaValue, LuaValue)]): Option[(LuaValue, LuaValue)] = operations
     .foldLeft(keyValue0)((keyValue, operation) => operation(keyValue))
 
-  def transformGenericRecord(in: (String, GenericRecord)): Option[(String, GenericRecord)] = {
-    val ini: Option[(LuaValue, LuaValue)] = Some((if (in._1 == null) LuaValue.NIL else LuaValue.valueOf(in._1), LuaMapper.recordToLua(in._2)))
+  def transformObjects[Ko, Vo](in: (Object, Object)): Option[(Ko, Vo)] = {
+    val ini: Option[(LuaValue, LuaValue)] = Some(objectToLuaValue(in._1), objectToLuaValue(in._2))
     transformLuaKeyValue(ini)
-      .map { case (k, v) => (k.tojstring, LuaMapper.luaToRecord(v.checktable, outputSchema)) }
+      .map { case (k, v) => (luaValueToObject(k, keyValueType.key).asInstanceOf[Ko], luaValueToObject(v, keyValueType.value).asInstanceOf[Vo]) }
   }
 
-  def transform(in: KStream[String, GenericRecord]): KStream[String, GenericRecord] = {
+  def objectToLuaValue(o: Any): LuaValue = {
+    if (o == null) {
+      LuaValue.NIL
+    } else o match {
+      case g: GenericRecord => LuaMapper.recordToLua(g)
+      case b: Boolean => LuaValue.valueOf(b)
+      case s: String => LuaValue.valueOf(s)
+      case i: Int => LuaValue.valueOf(i)
+      case l: Long => LuaValue.valueOf(l)
+      case _ => throw new Exception("x")
+    }
+  }
+
+  def luaValueToObject(l: LuaValue, t: MappingType): Object =
+    if (l.isnil) {
+      null
+    } else t match {
+      case StringType => l.checkstring.tojstring
+      case LongType => java.lang.Long.valueOf(l.checknumber.tolong)
+      case AvroType(Some(schema)) => LuaMapper.luaToRecord(l.checktable, schema)
+      case VoidType => null
+      case _ => throw new Exception("y")
+    }
+
+  def transform(in: KStream[Any, Any]): KStream[Object, Object] = {
     in
-      .map[LuaValue, LuaValue]((k, v) => new KeyValue(if (k == null) LuaValue.NIL else LuaValue.valueOf(k), LuaMapper.recordToLua(v)))
+      .map[LuaValue, LuaValue]((k, v) => {
+      new KeyValue(objectToLuaValue(k), objectToLuaValue(v))
+    })
       .map[String, Option[(LuaValue, LuaValue)]]((k, v) => {
       transformLuaKeyValue(Some(k, v)) match {
         case Some(kv) => new KeyValue(null, Some(kv))
@@ -181,7 +207,8 @@ class StreamingOperations(luaOps:LuaOperations, outputSchema:Schema) extends Log
       case Some(kv) => true
       case _ => false
     }).map((_, kv) => kv match {
-      case Some((k, v)) => new KeyValue(k.tojstring, LuaMapper.luaToRecord(v.checktable, outputSchema))
+      case Some((k, v)) =>
+        new KeyValue(luaValueToObject(k, keyValueType.key), luaValueToObject(v, keyValueType.value))
     })
   }
 }

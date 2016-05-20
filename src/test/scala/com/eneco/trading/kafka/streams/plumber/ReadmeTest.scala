@@ -2,11 +2,12 @@ package com.eneco.energy.kafka.streams.plumber
 
 import org.apache.avro.Schema.Parser
 import org.apache.avro.generic.GenericData.Record
+import org.apache.avro.generic.GenericRecord
 import org.apache.avro.util.Utf8
 import org.scalamock.scalatest.proxy.MockFactory
 import org.scalatest.{FunSuite, Matchers}
 
-  class ReadmeTest extends FunSuite with Matchers with MockFactory {
+  class ReadmeTest extends FunSuite with Matchers with MockFactory with Utl {
   val inSchema = new Parser().parse(
     """{
       |"type":"record",
@@ -53,18 +54,15 @@ import org.scalatest.{FunSuite, Matchers}
   test("The example in the README should work") {
     val rIn = new Record(inSchema)
     val rInPerson = new Record(inSchema.getField("person").schema)
-    rInPerson.put("name",new Utf8("ROEL"))
-    rInPerson.put("species",new Utf8("Rollulus rouloul"))
-    rIn.put("redundantField",7L)
-    rIn.put("notValid",false)
-    rIn.put("fingers_lh",5L)
-    rIn.put("fingers_rh",5L)
-    rIn.put("person",rInPerson)
+    rInPerson.put("name", new Utf8("ROEL"))
+    rInPerson.put("species", new Utf8("Rollulus rouloul"))
+    rIn.put("redundantField", 7L)
+    rIn.put("notValid", false)
+    rIn.put("fingers_lh", 5L)
+    rIn.put("fingers_rh", 5L)
+    rIn.put("person", rInPerson)
 
-    val rInV = TestUtils.reserialize(rIn)
-    val rOut = new StreamingOperations(new LuaOperations(myLua),outSchema).transformGenericRecord((null,rInV)).get
-    val rOutV = TestUtils.reserialize(rOut._2)
-
+    val rOutV = process[String, GenericRecord](myLua, (null, rIn), KeyValueType(StringType, AvroType(Some(outSchema)))).get._2
 
     rOutV.get("valid") shouldBe true
     rOutV.get("fingers") shouldBe 10L
