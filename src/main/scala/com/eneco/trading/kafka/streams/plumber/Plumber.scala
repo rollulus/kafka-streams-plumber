@@ -71,37 +71,49 @@ object Plumber extends Logging {
       head("plumber", "0.0.2")
       help("help") text "prints this usage text."
 
-      opt[String]('i', "source") optional() action { (x, args) =>
+      opt[String]('i', "source") optional() valueName "<topic>" action { (x, args) =>
         args.copy(sourceTopic = x)
       } text "source topic."
 
-      opt[String]('o', "sink") optional() action { (x, args) =>
+      opt[String]('o', "sink") optional() valueName "<topic>" action { (x, args) =>
         args.copy(sinkTopic = x)
       } text "sink topic."
 
-      opt[String]('d', "deserialize") optional() action { (x, args) =>
+      opt[String]('d', "deserialize") optional() valueName "<types>" action { (x, args) =>
         args.copy(inputType = KeyValueType.fromString(x))
       } text "how to deserialize input messages."
 
-      opt[String]('s', "serialize") required() action { (x, args) =>
+      opt[String]('s', "serialize") required() valueName "<types>" action { (x, args) =>
         args.copy(outputType = KeyValueType.fromString(x))
       } text "how to serialize output messages."
 
-      opt[String]('l', "script") required() action { (x, args) =>
+      opt[String]('l', "script") required() valueName "<file>" action { (x, args) =>
         args.copy(scriptFile = x)
       } text "lua script to provide operations, e.g. demo.lua."
 
-      opt[String]('p', "properties") optional() action { (x, args) =>
+      opt[String]('p', "properties") optional() valueName "<file>" action { (x, args) =>
         args.copy(propertiesFile = x)
       } text "properties file, e.g. demo.properties."
 
-      opt[String]('t', "test") optional() action { (x, args) =>
+      opt[String]('t', "test") optional() valueName "<file>" action { (x, args) =>
         args.copy(testFile = Some(x))
       } text "lua script file for test/verification pre-pass, e.g. demo.test.lua."
 
       opt[Unit]('D', "dry-run") optional() action { (x, args) =>
         args.copy(dryRun = true)
       } text "dry-run, do no start streaming. Only makes sense in combination with -t."
+
+      note(
+        """
+          |<types> has the format "keytype:valuetype" or simply "valuetype", where
+          |the type can be long, string, avro or void. In case of type avro, one can
+          |optionally give a schema file: avro=file.avsc.
+          |
+          |Example:
+          |
+          |plumber -l toy.lua -i source -o sink -p my.properties -d string,avro -s string,avro=out.avsc
+          |
+        """.stripMargin)
 
       checkConfig { c =>
         if ((c.sourceTopic == null || c.sinkTopic == null || c.propertiesFile == null) && !c.dryRun)

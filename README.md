@@ -56,25 +56,36 @@ Optionally, you can give Plumber a bunch of inputs and a bunch of expected outpu
 Usage
 -----
 
-    plumber 0.0.1
+    plumber 0.0.2
     Usage: plumber [options]
 
       --help
             prints this usage text.
-      -i <value> | --source <value>
+      -i <topic> | --source <topic>
             source topic.
-      -o <value> | --sink <value>
+      -o <topic> | --sink <topic>
             sink topic.
-      -s <value> | --schema <value>
-            sink Avro schema file, e.g. demo.avsc.
-      -l <value> | --script <value>
+      -d <types> | --deserialize <types>
+            how to deserialize input messages.
+      -s <types> | --serialize <types>
+            how to serialize output messages.
+      -l <file> | --script <file>
             lua script to provide operations, e.g. demo.lua.
-      -p <value> | --properties <value>
+      -p <file> | --properties <file>
             properties file, e.g. demo.properties.
-      -t <value> | --test <value>
+      -t <file> | --test <file>
             lua script file for test/verification pre-pass, e.g. demo.test.lua.
       -D | --dry-run
             dry-run, do no start streaming. Only makes sense in combination with -t.
+
+    <types> has the format "keytype:valuetype" or simply "valuetype", where
+    the type can be long, string, avro or void. In case of type avro, one can
+    optionally give a schema file: avro=file.avsc.
+
+    Example:
+
+    plumber -l toy.lua -i source -o sink -p my.properties -d string,avro -s string,avro=out.avsc
+
 
 Rationale
 ---------
