@@ -105,7 +105,7 @@ object Plumber extends Logging {
 
       note(
         """
-          |<types> has the format "keytype:valuetype" or simply "valuetype", where
+          |<types> has the format "keytype,valuetype" or simply "valuetype", where
           |the type can be long, string, avro or void. In case of type avro, one can
           |optionally give a schema file: avro=file.avsc.
           |

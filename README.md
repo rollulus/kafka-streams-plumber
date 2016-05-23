@@ -78,7 +78,7 @@ Usage
       -D | --dry-run
             dry-run, do no start streaming. Only makes sense in combination with -t.
 
-    <types> has the format "keytype:valuetype" or simply "valuetype", where
+    <types> has the format "keytype,valuetype" or simply "valuetype", where
     the type can be long, string, avro or void. In case of type avro, one can
     optionally give a schema file: avro=file.avsc.
 
