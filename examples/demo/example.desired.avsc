@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "DesiredStructure",
+  "fields": [
+    {
+      "name": "valid",
+      "type": "boolean"
+    },
+    {
+      "name": "name",
+      "type": "string"
+    },
+    {
+      "name": "fingers",
+      "type": "long"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+{"type":"record","name":"UndesiredStructure","fields":[{"name":"redundantField","type":"long"},{"name":"notValid","type":"boolean"},{"name":"fingers_lh","type":"long"},{"name":"fingers_rh","type":"long"},{"name":"person","type":{"type":"record","name":"UndesiredSubStructure","fields":[{"name":"name","type":"string"},{"name":"species","type":"string"}]}}]}

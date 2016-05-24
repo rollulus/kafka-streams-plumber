@@ -1,8 +1,0 @@
-{
-"type":"record",
-"name":"DesiredStructure",
-"fields":[
-{"name":"timestamp", "type": "double"}
-]
-}
-

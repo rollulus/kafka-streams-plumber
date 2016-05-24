@@ -51,7 +51,7 @@ And plumb:
 
     plumber.sh -i plumber-undesired -o plumber-desired -p demo.properties -l demo.lua -d avro -s avro=demo.avsc
 
-Optionally, you can give Plumber a bunch of inputs and a bunch of expected outputs. Prior to start the streaming job, it checks that given these inputs the provided logic yields these outputs. If not, it will refuse to start. An example test is found [here](examples/demo.test.lua).
+Optionally, you can give Plumber a bunch of inputs and a bunch of expected outputs. Prior to starting the streaming job, it checks that given these inputs the provided logic yields these outputs. If not, it will refuse to start. An example test is found [here](./examples/demo/).
 
 Usage
 -----
@@ -86,6 +86,11 @@ Usage
 
     plumber -l toy.lua -i source -o sink -p my.properties -d string,avro -s string,avro=out.avsc
 
+
+Examples
+--------
+
+Are found [here](./examples/).
 
 Rationale
 ---------
