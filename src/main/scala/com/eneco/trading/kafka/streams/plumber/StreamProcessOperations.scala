@@ -120,7 +120,11 @@ object LuaUtil {
       false
 
     if (a.istable) {
-      a.checktable.keys.forall(k => deepEq(a.get(k), b.get(k)))
+      val ta = a.checktable
+      val tb = b.checktable
+      ta.keys.forall(k => tb.keys.contains(k)) &&
+        tb.keys.forall(k => ta.keys.contains(k)) &&
+        a.checktable.keys.forall(k => deepEq(a.get(k), b.get(k)))
     } else {
       a.eq(b).toboolean
     }

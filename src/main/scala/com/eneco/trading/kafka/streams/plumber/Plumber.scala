@@ -34,6 +34,9 @@ object Plumber extends Logging {
       if (v.isFailure) {
         log.error(v.get.toString)
         return v
+      } else {
+        val Some(f) = a.testFile
+        log.info(s"OK, expectations provided in `${f}` were met")
       }
     }
 
