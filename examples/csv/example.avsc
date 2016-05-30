@@ -1,0 +1,22 @@
+{
+  "type": "record",
+  "name": "PartialGithubUser",
+  "fields": [
+    {
+      "name": "login",
+      "type": "string"
+    },
+    {
+      "name": "created_at",
+      "type": "string"
+    },
+    {
+      "name": "blog",
+      "type": ["null","string"]
+    },
+    {
+      "name": "public_repos",
+      "type": "long"
+    }
+  ]
+}
