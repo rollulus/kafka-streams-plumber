@@ -35,7 +35,7 @@ object LuaMapper {
     require(s.getType == Type.UNION)
     if (jv == null) {
       LuaValue.NIL
-    } else if (s.getTypes.size == 2) {
+    } else if (s.getTypes.get(0).getType == Type.NULL && s.getTypes.size == 2) {
       // This is the most common use case, so short circuit it.
       objectToLuaValue(jv, s.getTypes.get(1))
     } else {
@@ -68,7 +68,7 @@ object LuaMapper {
     require(s.getType == Type.UNION)
     if (lv.isnil) {
       null
-    } else if (s.getTypes.size == 2) {
+    } else if (s.getTypes.get(0).getType == Type.NULL && s.getTypes.size == 2) {
       // This is the most common use case, so short circuit it.
       luaValueToObject(lv, s.getTypes.get(1))
     } else {
@@ -79,10 +79,10 @@ object LuaMapper {
 
   def isLuaInstanceOf(lv: LuaValue, s: Schema): Boolean = s.getType() match {
     case Type.DOUBLE => lv.isnumber() && !lv.isinttype()
-    // There is no lua float type (only double) so the
+    // There is no lua float type (only double) so
     // which is chosen depends on union ordering
     case Type.FLOAT => lv.isnumber() && !lv.isinttype()
-    case Type.STRING => lv.isstring()
+    case Type.STRING => lv.isstring() && !lv.isnumber() // LuaNumbers can be resolved to strings...
     case Type.INT => lv.isint()
     case Type.LONG => lv.islong()
     case Type.BOOLEAN => lv.isboolean()

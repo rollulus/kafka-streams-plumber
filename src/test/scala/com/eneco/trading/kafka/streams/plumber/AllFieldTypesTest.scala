@@ -1,5 +1,6 @@
 package com.eneco.energy.kafka.streams.plumber
 
+import org.apache.avro.UnresolvedUnionException
 import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.avro.util.Utf8
@@ -170,5 +171,27 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     recordOut.get("d") shouldBe 2
     recordOut.get("e") shouldBe 1
     recordOut.get("f") shouldBe false
+  }
+
+  test("Unresolvable unions throw an exception") {
+    def unionSchema() = rec("s", Map("a"->union(int, string)))
+
+    val record = new Record(unionSchema())
+    record.put("a", 42)
+
+    val myLua =
+      """function process(t)
+        |    assert(t.a==42)
+        |
+        | return {
+        |  a=1.5
+        |  }
+        |end
+        |return pb.mapValues(process)
+      """.stripMargin
+
+    intercept[UnresolvedUnionException] {
+      process[String, GenericRecord](myLua, (null, record), KeyValueType(StringType, AvroType(Some(unionSchema)))).get._2
+    }
   }
 }
