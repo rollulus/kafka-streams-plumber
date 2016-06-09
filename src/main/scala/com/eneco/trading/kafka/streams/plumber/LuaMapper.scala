@@ -2,11 +2,12 @@ package com.eneco.energy.kafka.streams.plumber
 
 import java.util
 
-import org.apache.avro.Schema
+import org.apache.avro.{Schema, UnresolvedUnionException}
 import org.apache.avro.Schema.Type
 import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.{GenericData, GenericRecord}
-import org.luaj.vm2.{LuaTable, LuaValue}
+import org.luaj.vm2._
+
 import scala.collection.JavaConverters._
 
 // Translate Lua <-> GenericRecord
@@ -30,15 +31,15 @@ object LuaMapper {
     LuaValue.valueOf(jv.asInstanceOf[GenericData.EnumSymbol].toString)
   }
 
-  // TODO: full impl
   def unionToLua(jv: Object, s: Schema): LuaValue = {
     require(s.getType == Type.UNION)
-    require(s.getTypes.size == 2, "only [null,T] unions are allowed atm TODO")
-    require(s.getTypes.get(0).getType == Type.NULL, "only [null,T] unions are allowed atm TODO")
     if (jv == null) {
       LuaValue.NIL
-    } else {
+    } else if (s.getTypes.get(0).getType == Type.NULL && s.getTypes.size == 2) {
+      // This is the most common use case, so short circuit it.
       objectToLuaValue(jv, s.getTypes.get(1))
+    } else {
+      objectToLuaValue(jv, s.getTypes.get(GenericData.get().resolveUnion(s, jv)))
     }
   }
 
@@ -63,16 +64,30 @@ object LuaMapper {
     (1 to lt.length).map(i => luaValueToObject(lt.get(i), elms)).asJavaCollection
   }
 
-  // TODO: full impl
   def luaValueToUnion(lv: LuaValue, s: Schema): Any = {
     require(s.getType == Type.UNION)
-    require(s.getTypes.size == 2, "only [null,T] unions are allowed atm TODO")
-    require(s.getTypes.get(0).getType == Type.NULL, "only [null,T] unions are allowed atm TODO")
     if (lv.isnil) {
       null
-    } else {
+    } else if (s.getTypes.get(0).getType == Type.NULL && s.getTypes.size == 2) {
+      // This is the most common use case, so short circuit it.
       luaValueToObject(lv, s.getTypes.get(1))
+    } else {
+      val lvTypes = s.getTypes.asScala.filter(t => isLuaInstanceOf(lv, t))
+      if (!lvTypes.isEmpty) luaValueToObject(lv, lvTypes.head) else throw new UnresolvedUnionException(s, lv)
     }
+  }
+
+  def isLuaInstanceOf(lv: LuaValue, s: Schema): Boolean = s.getType() match {
+    case Type.DOUBLE => lv.isnumber() && !lv.isinttype()
+    // There is no lua float type (only double) so
+    // which is chosen depends on union ordering
+    case Type.FLOAT => lv.isnumber() && !lv.isinttype()
+    case Type.STRING => lv.isstring() && !lv.isnumber() // LuaNumbers can be resolved to strings...
+    case Type.INT => lv.isint()
+    case Type.LONG => lv.islong()
+    case Type.BOOLEAN => lv.isboolean()
+    case Type.RECORD => lv.istable()
+    case _ => false
   }
 
   def luaValueToEnum(lv: LuaValue, s: Schema): Any = {

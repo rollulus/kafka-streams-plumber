@@ -1,5 +1,6 @@
 package com.eneco.energy.kafka.streams.plumber
 
+import org.apache.avro.UnresolvedUnionException
 import org.apache.avro.generic.GenericData.Record
 import org.apache.avro.generic.{GenericData, GenericRecord}
 import org.apache.avro.util.Utf8
@@ -33,7 +34,7 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
         |  assert(t.optstring0 == nil)
         |  assert(t.optstring1 == "o")
         |  assert(t.mandstring == "m")
-        |  return {mandstring="mm", optstring0="o0"} -- this makes optstring0 nil
+        |  return {mandstring="mm", optstring0="o0"} -- this makes optstring1 nil
         |end
         |return pb.mapValues(process)
       """.stripMargin
@@ -120,4 +121,77 @@ class AllFieldTypesTest extends FunSuite with Matchers with MockFactory with Utl
     bo0.get("color").toString shouldBe "brown"
     bo0.get("weight") shouldBe 3.2f
  }
+
+  test("Unions should resolve to the correct type") {
+    def unionSchema() =
+      rec("s", Map(
+      "a"->union(nul, boolean, int, long, float, double, string),
+      "b"->union(nul, boolean, int, long, float, double, string),
+      "c"->union(nul, boolean, int, long, float, double, string),
+      "d"->union(nul, boolean, int, long, float, double, string),
+      "e"->union(nul, boolean, int, long, float, double, string),
+      "f"->union(nul, boolean, int, long, float, double, string),
+      "g"->union(nul, boolean, int, long, float, double, string)
+    ))
+
+    val record = new Record(unionSchema())
+    record.put("a", true)
+    record.put("b", 1)
+    record.put("c", 2L)
+    record.put("d", 1.5f)
+    record.put("e", 0.75f)
+    record.put("f", "string f")
+
+    val myLua =
+      """function process(t)
+        |    assert(t.a==true)
+        |    assert(t.b==1)
+        |    assert(t.c==2)
+        |    assert(t.d==1.5)
+        |    assert(t.e==0.75)
+        |    assert(t.f=="string f")
+        |
+        | return {
+        |  a="string a",
+        |  b=0.75,
+        |  c=1.5,
+        |  d=2,
+        |  e=1,
+        |  f=false
+        |  }
+        |end
+        |return pb.mapValues(process)
+      """.stripMargin
+
+    val recordOut = process[String, GenericRecord](myLua, (null, record), KeyValueType(StringType, AvroType(Some(unionSchema)))).get._2
+
+    recordOut.get("a").toString shouldBe "string a"
+    recordOut.get("b") shouldBe 0.75
+    recordOut.get("c") shouldBe 1.5
+    recordOut.get("d") shouldBe 2
+    recordOut.get("e") shouldBe 1
+    recordOut.get("f") shouldBe false
+  }
+
+  test("Unresolvable unions throw an exception") {
+    def unionSchema() = rec("s", Map("a"->union(int, string)))
+
+    val record = new Record(unionSchema())
+    record.put("a", 42)
+
+    val myLua =
+      """function process(t)
+        |    assert(t.a==42)
+        |
+        | return {
+        |  a=1.5
+        |  }
+        |end
+        |return pb.mapValues(process)
+      """.stripMargin
+
+    intercept[UnresolvedUnionException] {
+      process[String, GenericRecord](myLua, (null, record), KeyValueType(StringType, AvroType(Some(unionSchema)))).get._2
+    }
+  }
 }
