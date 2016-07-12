@@ -22,8 +22,6 @@ object Plumber extends Logging {
                        testFile: Option[String] = None,
                        dryRun: Boolean = false)
 
-
-
   def exec(a: Arguments): Try[Unit] = {
     val luaOps = new LuaOperations(readLuaScript(a.scriptFile), a.testFile.map(readLuaScript))
     val streamingOps = new StreamingOperations(luaOps, a.outputType)
@@ -47,12 +45,12 @@ object Plumber extends Logging {
 
     // prepare
     val builder = new KStreamBuilder
-    val cfg = propertiesFromFiles(a.propertiesFile) | fixedProperties //| serializerProperties(a.inputType, a.outputType)
+    val cfg = propertiesFromFiles(a.propertiesFile)
 
     // source
     val in: KStream[Any, Any] = builder.stream(
-      MappingType.toDeserializer(a.inputType.key, cfg, true).asInstanceOf[Deserializer[Any]],
-      MappingType.toDeserializer(a.inputType.value, cfg, false).asInstanceOf[Deserializer[Any]],
+      MappingType.toSerde(a.inputType.key, cfg, true).asInstanceOf[Serde[Any]],
+      MappingType.toSerde(a.inputType.value, cfg, false).asInstanceOf[Serde[Any]],
       a.sourceTopic)
 
     // transformations
@@ -60,9 +58,9 @@ object Plumber extends Logging {
 
     // sinks
     out.to(
-      a.sinkTopic,
-      MappingType.toSerializer(a.outputType.key, cfg, true).asInstanceOf[Serializer[Object]],
-      MappingType.toSerializer(a.outputType.value, cfg, false).asInstanceOf[Serializer[Object]])
+      MappingType.toSerde(a.outputType.key, cfg, true).asInstanceOf[Serde[Object]],
+      MappingType.toSerde(a.outputType.value, cfg, false).asInstanceOf[Serde[Object]],
+      a.sinkTopic)
 
     // run
     new KafkaStreams(builder, cfg).start()
@@ -142,14 +140,5 @@ object Plumber extends Logging {
   }
 
   def propertiesFromFiles(files: String*) = files.map(Properties.fromFile).foldLeft(new java.util.Properties)(_ | _)
-
-  // TODO: is work around Streams API, revisit in 0.10?
-  def fixedProperties() = Properties.create(Map(
-    StreamsConfig.KEY_SERIALIZER_CLASS_CONFIG -> classOf[LongSerializer],
-    StreamsConfig.KEY_DESERIALIZER_CLASS_CONFIG -> classOf[LongDeserializer],
-    StreamsConfig.VALUE_SERIALIZER_CLASS_CONFIG -> classOf[LongSerializer],
-    StreamsConfig.VALUE_DESERIALIZER_CLASS_CONFIG -> classOf[LongDeserializer]
-  ))
-
 }
 

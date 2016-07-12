@@ -19,10 +19,10 @@
   </repositories>
   <properties>
     <java.version>1.8</java.version>
-    <kafka.version>0.9.1.0-cp1</kafka.version>
+    <kafka.version>0.10.0.0</kafka.version>
     <kafka.scala.version>2.11</kafka.scala.version>
     <scala.version>${kafka.scala.version}.7</scala.version>
-    <confluent.version>2.1.0-alpha1</confluent.version>
+    <confluent.version>3.0.0</confluent.version>
     <scalatest.version>2.2.6</scalatest.version>
     <mockito.version>1.10.19</mockito.version>
     <avro.version>1.7.7</avro.version>
