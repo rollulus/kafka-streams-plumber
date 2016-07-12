@@ -6,7 +6,7 @@ import java.util.Properties
 import org.apache.avro.Schema
 import org.apache.avro.Schema.Parser
 import org.apache.avro.generic.GenericRecord
-import org.apache.kafka.common.serialization._
+import org.apache.kafka.common.serialization.Serdes._
 import com.eneco.energy.kafka.streams.plumber.Properties._
 
 sealed trait MappingType
@@ -27,23 +27,12 @@ object MappingType {
     })
   }
 
-  def toSerializer(t: MappingType, ps: Properties, isKey: Boolean) = {
+  def toSerde(t: MappingType, ps: Properties, isKey: Boolean) = {
     val s = t match {
-      case LongType => new LongSerializer
-      case StringType => new StringSerializer
-      case AvroType(_) => new GenericAvroSerializer[GenericRecord]
-      case VoidType => new StringSerializer //TODO: create void serializer
-    }
-    s.configure(ps.toHashMap(), isKey)
-    s
-  }
-
-  def toDeserializer(t: MappingType, ps: Properties, isKey: Boolean): Deserializer[_] = {
-    val s = t match {
-      case LongType => new LongDeserializer
-      case StringType => new StringDeserializer
-      case AvroType(_) => new GenericAvroDeserializer[GenericRecord]
-      case VoidType => new StringDeserializer //TODO: create void deserializer
+      case LongType => new LongSerde
+      case StringType => new StringSerde
+      case AvroType(_) => new GenericAvroSerde[GenericRecord]
+      case VoidType => new StringSerde //TODO: create void serializer
     }
     s.configure(ps.toHashMap(), isKey)
     s
