@@ -1,0 +1,10 @@
+#!/bin/bash -x
+cat >/tmp/p.props <<EOF
+application.id=$APPLICATION_ID
+bootstrap.servers=$BOOTSTRAP_SERVERS
+zookeeper.connect=$ZOOKEEPER_CONNECT
+schema.registry.url=$SCHEMA_REGISTRY_URL
+EOF
+
+/usr/bin/java -jar /opt/plumber.jar -p /tmp/p.props $@
+
