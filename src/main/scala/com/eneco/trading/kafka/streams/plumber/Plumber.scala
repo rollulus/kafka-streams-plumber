@@ -2,6 +2,7 @@ package com.eneco.energy.kafka.streams.plumber
 
 import java.nio.charset.Charset
 import java.nio.file.{Files, Paths}
+import java.util.Properties
 
 import com.eneco.energy.kafka.streams.plumber.Properties._
 import org.apache.kafka.common.serialization._
@@ -23,6 +24,7 @@ object Plumber extends Logging {
                        dryRun: Boolean = false)
 
   def exec(a: Arguments): Try[Unit] = {
+    log.info(s"This is Plumber ${GitRepositoryState.describe} (${GitRepositoryState.commit}) built at ${GitRepositoryState.build}")
     log.info(s"sourceTopic: ${a.sourceTopic}")
     log.info(s"sinkTopic: ${a.sinkTopic}")
     log.info(s"inputType: ${a.inputType}")
@@ -79,7 +81,7 @@ object Plumber extends Logging {
 
   def parseProgramArgs(args: Array[String]): Option[Arguments] = {
     new OptionParser[Arguments]("plumber") {
-      head("plumber", "0.0.2")
+      head("plumber", GitRepositoryState.describe)
       help("help") text "prints this usage text."
 
       opt[String]('i', "source") optional() valueName "<topic>" action { (x, args) =>
@@ -152,3 +154,14 @@ object Plumber extends Logging {
   def propertiesFromFiles(files: String*) = files.map(Properties.fromFile).foldLeft(new java.util.Properties)(_ | _)
 }
 
+object GitRepositoryState {
+  val props = {
+    val p = new Properties()
+    p.load(getClass.getClassLoader.getResourceAsStream("git.properties"))
+    p
+  }
+
+  def describe: String = props.getProperty("git.commit.id.describe")
+  def commit: String = props.getProperty("git.commit.id")
+  def build: String = props.getProperty("git.build.time")
+}
