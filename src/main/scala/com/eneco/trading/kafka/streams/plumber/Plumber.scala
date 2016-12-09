@@ -23,6 +23,15 @@ object Plumber extends Logging {
                        dryRun: Boolean = false)
 
   def exec(a: Arguments): Try[Unit] = {
+    log.info(s"sourceTopic: ${a.sourceTopic}")
+    log.info(s"sinkTopic: ${a.sinkTopic}")
+    log.info(s"inputType: ${a.inputType}")
+    log.info(s"outputType: ${a.outputType}")
+    log.info(s"scriptFile: ${a.scriptFile}")
+    log.info(s"propertiesFile: ${a.propertiesFile}")
+    log.info(s"testFile: ${a.testFile}")
+    log.info(s"dryRun: ${a.dryRun}")
+
     val luaOps = new LuaOperations(readLuaScript(a.scriptFile), a.testFile.map(readLuaScript))
     val streamingOps = new StreamingOperations(luaOps, a.outputType)
 
@@ -63,11 +72,12 @@ object Plumber extends Logging {
       a.sinkTopic)
 
     // run
+    log.trace("giving control to kafka streams")
     new KafkaStreams(builder, cfg).start()
     Success()
   }
 
-  def parseProgramArgs(args: Array[String]) = {
+  def parseProgramArgs(args: Array[String]): Option[Arguments] = {
     new OptionParser[Arguments]("plumber") {
       head("plumber", "0.0.2")
       help("help") text "prints this usage text."
