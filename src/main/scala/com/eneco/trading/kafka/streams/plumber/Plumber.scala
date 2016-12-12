@@ -75,7 +75,13 @@ object Plumber extends Logging {
 
     // run
     log.trace("giving control to kafka streams")
-    new KafkaStreams(builder, cfg).start()
+    val streams = new KafkaStreams(builder, cfg)
+    sys.addShutdownHook({
+      log.warn("shutdownHook triggered (SIGTERM/SIGINT received?); close streams")
+      streams.close()
+      log.info("sent close to streams")
+    })
+    streams.start()
     Success()
   }
 
