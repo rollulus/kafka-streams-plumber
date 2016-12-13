@@ -9,7 +9,11 @@ ENV APPLICATION_ID=unique-plumber-id
 
 RUN test -n "$srcjar" || (echo "*** srcjar is not specified" && false)
 
+RUN curl -Lo /usr/bin/dumb-init https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64
+RUN chmod +x /usr/bin/dumb-init
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+
 COPY ${srcjar} /opt/plumber.jar
 COPY plumber /opt/plumber
 
-CMD /opt/plumber
+CMD ["/opt/plumber"]
