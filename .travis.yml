@@ -1,4 +1,10 @@
+services:
+  - docker
+
 language: scala
 scala: 2.11.7
 jdk: oraclejdk8
-script: mvn test
+script: mvn package
+
+after_success:
+  - ./deploy.sh
